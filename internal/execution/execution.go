@@ -17,13 +17,18 @@ func NewExecutor() *Executor {
 	return &Executor{}
 }
 
-func (e *Executor) Run(w *wf.Workflow) error {
+func (e *Executor) Run(w *wf.Workflow, params ...map[string]any) error {
 	order, err := topologicalSort(w)
 	if err != nil {
 		return fmt.Errorf("topological sort failed: %w", err)
 	}
 
-	ctx := NewExecutionContext(w.Id, "")
+	var runParams map[string]any
+	if len(params) > 0 {
+		runParams = params[0]
+	}
+
+	ctx := NewExecutionContext(w.Id, "", runParams)
 
 	for _, nodeID := range order {
 		nodeDef, ok := w.Nodes[nodeID]
@@ -41,8 +46,16 @@ func (e *Executor) Run(w *wf.Workflow) error {
 		ctx.Input = ctx.Output
 		ctx.Output = make(map[string]any)
 
+		if err := applyInputMapping(nodeDef.Config, ctx); err != nil {
+			return fmt.Errorf("input parsing failed for node %s: %w", nodeID, err)
+		}
+
 		if err := node.Execute(ctx); err != nil {
 			return fmt.Errorf("execution failed for node %s: %w", nodeID, err)
+		}
+
+		if err := applyOutputMapping(nodeDef.Config, ctx); err != nil {
+			return fmt.Errorf("output parsing failed for node %s: %w", nodeID, err)
 		}
 	}
 
