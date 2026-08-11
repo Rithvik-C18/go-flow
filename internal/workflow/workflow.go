@@ -100,3 +100,58 @@ func (d *Workflow) AddEdge(from, to string) error {
 
 	return nil
 }
+
+func (d *Workflow) DeleteEdge(from, to string) error {
+	if from == "" {
+		return errors.New("from node is empty")
+	}
+	if to == "" {
+		return errors.New("to node is empty")
+	}
+
+	if _, ok := d.Nodes[from]; !ok {
+		return errors.New("from node does not exist")
+	}
+
+	if _, ok := d.Nodes[to]; !ok {
+		return errors.New("to node does not exist")
+	}
+
+	edges := d.Edges[from]
+	for i, existing := range edges {
+		if existing == to {
+			d.Edges[from] = append(edges[:i], edges[i+1:]...)
+			if len(d.Edges[from]) == 0 {
+				delete(d.Edges, from)
+			}
+			return nil
+		}
+	}
+
+	return errors.New("edge does not exist")
+}
+
+func (d *Workflow) DeleteNode(id string) error {
+	if id == "" {
+		return errors.New("node id is empty")
+	}
+
+	if _, ok := d.Nodes[id]; !ok {
+		return errors.New("node does not exist")
+	}
+
+	delete(d.Nodes, id)
+	delete(d.Edges, id)
+
+	for from, neighbors := range d.Edges {
+		var remaining []string
+		for _, to := range neighbors {
+			if to != id {
+				remaining = append(remaining, to)
+			}
+		}
+		d.Edges[from] = remaining
+	}
+
+	return nil
+}
