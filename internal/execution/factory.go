@@ -11,6 +11,8 @@ func buildNode(def *workflow.NodeDefinition) (Node, error) {
 	switch def.Type {
 	case "http":
 		return NewHttpNode(def.Config)
+	case "if":
+		return NewIfNode(def.Config)
 	default:
 		return nil, fmt.Errorf("Unknown node type")
 	}
