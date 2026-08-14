@@ -131,7 +131,7 @@ func (n *IfNode) Execute(ctx *ExecutionContext) error {
 func (c *Condition) evaluate(ctx *ExecutionContext) (bool, error) {
 	left, found, err := resolveOptional(c.left, ctx.Input, nil, ctx.Params)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("if node: error resolving left operand: %w", err)
 	}
 
 	switch c.operator {
@@ -140,18 +140,30 @@ func (c *Condition) evaluate(ctx *ExecutionContext) (bool, error) {
 	case "notExists":
 		return !found, nil
 	case "isEmpty":
+		if !found {
+			return true, nil
+		}
 		return isEmpty(left), nil
 	case "notEmpty":
+		if !found {
+			return false, nil
+		}
 		return !isEmpty(left), nil
 	case "isTruthy":
+		if !found {
+			return false, nil
+		}
 		return isTruthy(left), nil
 	case "isFalsy":
+		if !found {
+			return true, nil
+		}
 		return !isTruthy(left), nil
 	}
 
 	right, err := resolveValue(c.right, ctx.Input, nil, ctx.Params)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("if node: error resolving right operand: %w", err)
 	}
 
 	switch c.operator {
@@ -163,11 +175,11 @@ func (c *Condition) evaluate(ctx *ExecutionContext) (bool, error) {
 	case "startsWith", "endsWith":
 		s, ok := left.(string)
 		if !ok {
-			return false, fmt.Errorf("if node: %q requires a string left operand, got %T", c.operator, left)
+			return false, fmt.Errorf("if node: %q requires a string left operand, got %T (value: %v)", c.operator, left, left)
 		}
 		e, ok := right.(string)
 		if !ok {
-			return false, fmt.Errorf("if node: %q requires a string right operand, got %T", c.operator, right)
+			return false, fmt.Errorf("if node: %q requires a string right operand, got %T (value: %v)", c.operator, right, right)
 		}
 		if c.operator == "startsWith" {
 			return strings.HasPrefix(s, e), nil
@@ -181,6 +193,26 @@ func (c *Condition) evaluate(ctx *ExecutionContext) (bool, error) {
 }
 
 func compare(operator string, left, right any) (bool, error) {
+	// Handle nil values
+	if left == nil || right == nil {
+		switch operator {
+		case "==":
+			return left == nil && right == nil, nil
+		case "!=":
+			return left != nil || right != nil, nil
+		case ">":
+			return left != nil && right == nil, nil
+		case "<":
+			return left == nil && right != nil, nil
+		case ">=":
+			return left == right || (left != nil && right == nil), nil
+		case "<=":
+			return left == right || (left == nil && right != nil), nil
+		default:
+			return false, fmt.Errorf("if node: operator %q with nil values only supports ==, !=, >, <, >=, <=", operator)
+		}
+	}
+
 	if operator == "==" {
 		return equal(left, right), nil
 	}
@@ -219,7 +251,7 @@ func compare(operator string, left, right any) (bool, error) {
 		}
 	}
 
-	return false, fmt.Errorf("if node: operator %q requires numeric or string operands, got %T and %T", operator, left, right)
+	return false, fmt.Errorf("if node: operator %q requires numeric or string operands, got %T (value: %v) and %T (value: %v)", operator, left, left, right, right)
 }
 
 func equal(left, right any) bool {
@@ -232,6 +264,10 @@ func equal(left, right any) bool {
 }
 
 func contains(container, element any) (bool, error) {
+	if container == nil {
+		return false, nil
+	}
+
 	switch c := container.(type) {
 	case string:
 		e, ok := element.(string)
@@ -332,5 +368,3 @@ func toFloat64(v any) (float64, bool) {
 		return 0, false
 	}
 }
-
-

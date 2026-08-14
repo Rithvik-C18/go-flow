@@ -6,6 +6,14 @@ import (
 	"github.com/Rithvik-C18/go-flow/internal/workflow"
 )
 
+func IsValidNodeType(nodeType string) bool {
+	switch nodeType {
+	case "http", "if":
+		return true
+	default:
+		return false
+	}
+}
 
 func buildNode(def *workflow.NodeDefinition) (Node, error) {
 	switch def.Type {

@@ -1,6 +1,6 @@
 package workflow
 
-func (w *Workflow) hasPath(start, target string) bool{
+func (w *Workflow) hasPath(start, target string) bool {
 	visited := make(map[string]bool)
 	return w.dfs(start, target, visited)
 }

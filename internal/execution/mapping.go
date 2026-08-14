@@ -70,7 +70,7 @@ func resolveValue(src any, primary, secondary, params map[string]any) (any, erro
 
 	data, key, ok := resolveTarget(key, primary, secondary, params)
 	if !ok {
-		return nil, fmt.Errorf("key %q not available in this scope", key)
+		return nil, fmt.Errorf("key %q not available in this scope (available: input.*, params.*, or direct field)", key)
 	}
 
 	value, found, err := lookupValue(data, key)
@@ -78,7 +78,7 @@ func resolveValue(src any, primary, secondary, params map[string]any) (any, erro
 		return nil, err
 	}
 	if !found {
-		return nil, fmt.Errorf("key %q not found", key)
+		return nil, fmt.Errorf("key %q not found in data (resolved target: %s)", key, key)
 	}
 
 	return value, nil
@@ -100,7 +100,12 @@ func resolveOptional(src any, primary, secondary, params map[string]any) (any, b
 		return nil, false, nil
 	}
 
-	return lookupValue(data, key)
+	value, found, err := lookupValue(data, key)
+	if err != nil {
+		return nil, false, fmt.Errorf("error looking up key %q: %w", key, err)
+	}
+
+	return value, found, nil
 }
 
 func resolveTarget(key string, primary, secondary, params map[string]any) (map[string]any, string, bool) {

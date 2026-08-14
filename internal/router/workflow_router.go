@@ -1,0 +1,25 @@
+package router
+
+import (
+	"github.com/Rithvik-C18/go-flow/internal/handler"
+	"github.com/gin-gonic/gin"
+)
+
+func registerProtectedRoutes(r *gin.Engine, workflowHandler *handler.WorkflowHandler, authMiddleware gin.HandlerFunc) {
+	workflows := r.Group("/workflows", authMiddleware)
+	{
+		workflows.GET("", workflowHandler.ListWorkflows)
+		workflows.POST("", workflowHandler.CreateWorkflow)
+
+		workflows.GET("/:id", workflowHandler.GetWorkflow)
+		workflows.POST("/:id/run", workflowHandler.RunWorkflow)
+		workflows.DELETE("/:id", workflowHandler.DeleteWorkflow)
+
+		workflows.GET("/:id/nodes", workflowHandler.ListNodes)
+		workflows.POST("/:id/nodes", workflowHandler.AddNode)
+		workflows.DELETE("/:id/nodes/:nodeId", workflowHandler.DeleteNode)
+
+		workflows.POST("/:id/edges", workflowHandler.AddEdge)
+		workflows.DELETE("/:id/edges", workflowHandler.DeleteEdge)
+	}
+}
