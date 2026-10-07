@@ -5,8 +5,9 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func registerPublicRoutes(r *gin.Engine, authHandler *handler.AuthHandler) {
+func registerPublicRoutes(r gin.IRouter, authHandler *handler.AuthHandler) {
 	r.POST("/login", authHandler.Login)
+	r.POST("/refresh", authHandler.RefreshToken)
 
 	auth := r.Group("/auth")
 	{

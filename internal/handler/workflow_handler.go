@@ -16,7 +16,7 @@ func NewWorkflowHandler(service *service.WorkflowService) *WorkflowHandler {
 }
 
 func (h *WorkflowHandler) ListWorkflows(c *gin.Context) {
-	workflows, err := h.service.List()
+	workflows, err := h.service.ForUser(c.GetUint("userId")).List()
 	if err != nil {
 		respondError(c, err)
 		return
@@ -35,7 +35,7 @@ func (h *WorkflowHandler) CreateWorkflow(c *gin.Context) {
 		return
 	}
 
-	if err := h.service.Create(req.Id, req.Name); err != nil {
+	if err := h.service.ForUser(c.GetUint("userId")).Create(req.Id, req.Name); err != nil {
 		respondError(c, err)
 		return
 	}
@@ -44,7 +44,7 @@ func (h *WorkflowHandler) CreateWorkflow(c *gin.Context) {
 }
 
 func (h *WorkflowHandler) GetWorkflow(c *gin.Context) {
-	workflow, err := h.service.Get(c.Param("id"))
+	workflow, err := h.service.ForUser(c.GetUint("userId")).Get(c.Param("id"))
 	if err != nil {
 		respondError(c, err)
 		return
@@ -53,7 +53,7 @@ func (h *WorkflowHandler) GetWorkflow(c *gin.Context) {
 }
 
 func (h *WorkflowHandler) DeleteWorkflow(c *gin.Context) {
-	if err := h.service.Delete(c.Param("id")); err != nil {
+	if err := h.service.ForUser(c.GetUint("userId")).Delete(c.Param("id")); err != nil {
 		respondError(c, err)
 		return
 	}
@@ -69,7 +69,7 @@ func (h *WorkflowHandler) RunWorkflow(c *gin.Context) {
 		}
 	}
 
-	if err := h.service.Run(c.Param("id"), params); err != nil {
+	if err := h.service.ForUser(c.GetUint("userId")).Run(c.Param("id"), params); err != nil {
 		respondError(c, err)
 		return
 	}
@@ -78,7 +78,7 @@ func (h *WorkflowHandler) RunWorkflow(c *gin.Context) {
 }
 
 func (h *WorkflowHandler) ListNodes(c *gin.Context) {
-	workflow, err := h.service.Get(c.Param("id"))
+	workflow, err := h.service.ForUser(c.GetUint("userId")).Get(c.Param("id"))
 	if err != nil {
 		respondError(c, err)
 		return
@@ -98,7 +98,7 @@ func (h *WorkflowHandler) AddNode(c *gin.Context) {
 		return
 	}
 
-	if err := h.service.AddNode(c.Param("id"), req.Id, req.Type, req.Config); err != nil {
+	if err := h.service.ForUser(c.GetUint("userId")).AddNode(c.Param("id"), req.Id, req.Type, req.Config); err != nil {
 		respondError(c, err)
 		return
 	}
@@ -107,7 +107,7 @@ func (h *WorkflowHandler) AddNode(c *gin.Context) {
 }
 
 func (h *WorkflowHandler) DeleteNode(c *gin.Context) {
-	if err := h.service.DeleteNode(c.Param("id"), c.Param("nodeId")); err != nil {
+	if err := h.service.ForUser(c.GetUint("userId")).DeleteNode(c.Param("id"), c.Param("nodeId")); err != nil {
 		respondError(c, err)
 		return
 	}
@@ -125,7 +125,7 @@ func (h *WorkflowHandler) AddEdge(c *gin.Context) {
 		return
 	}
 
-	if err := h.service.AddEdge(c.Param("id"), req.From, req.To); err != nil {
+	if err := h.service.ForUser(c.GetUint("userId")).AddEdge(c.Param("id"), req.From, req.To); err != nil {
 		respondError(c, err)
 		return
 	}
@@ -144,7 +144,7 @@ func (h *WorkflowHandler) DeleteEdge(c *gin.Context) {
 		return
 	}
 
-	if err := h.service.DeleteEdge(c.Param("id"), req.From, req.To); err != nil {
+	if err := h.service.ForUser(c.GetUint("userId")).DeleteEdge(c.Param("id"), req.From, req.To); err != nil {
 		respondError(c, err)
 		return
 	}

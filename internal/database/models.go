@@ -8,12 +8,15 @@ import (
 
 type User struct {
 	gorm.Model
-	Username     string `gorm:"uniqueIndex;not null"`
-	Email        string `gorm:"uniqueIndex;not null"`
-	PasswordHash string `gorm:"not null"`
+	Username              string `gorm:"uniqueIndex;not null"`
+	Email                 string `gorm:"uniqueIndex;not null"`
+	PasswordHash          string `gorm:"not null"`
+	RefreshTokenHash      string
+	RefreshTokenExpiresAt *time.Time
 }
 
 type Workflow struct {
+	UserID    uint   `gorm:"index"`
 	ID        string `gorm:"primaryKey;size:255"`
 	Name      string `gorm:"not null"`
 	Nodes     []Node `gorm:"constraint:OnDelete:CASCADE"`

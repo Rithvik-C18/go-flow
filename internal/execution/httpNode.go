@@ -3,6 +3,7 @@ package execution
 import (
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/go-resty/resty/v2"
 )
@@ -61,7 +62,7 @@ func NewHttpNode(config map[string]any) (*HttpNode, error) {
 }
 
 func (h *HttpNode) Execute(ctx *ExecutionContext) error {
-	client := resty.New()
+	client := resty.New().SetTimeout(30 * time.Second)
 	req := client.R()
 
 	if len(h.queryParams) > 0 {

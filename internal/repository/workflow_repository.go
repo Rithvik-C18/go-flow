@@ -11,15 +11,20 @@ import (
 )
 
 type WorkflowRepository struct {
-	db *gorm.DB
+	db     *gorm.DB
+	userID uint
 }
 
 func NewWorkflowRepository(db *gorm.DB) *WorkflowRepository {
 	return &WorkflowRepository{db: db}
 }
 
+func (r *WorkflowRepository) ForUser(userID uint) *WorkflowRepository {
+	return &WorkflowRepository{db: r.db, userID: userID}
+}
+
 func (r *WorkflowRepository) Create(id, name string) error {
-	record := &database.Workflow{ID: id, Name: name}
+	record := &database.Workflow{ID: id, Name: name, UserID: r.userID}
 	if err := r.db.Create(record).Error; err != nil {
 		if errors.Is(err, gorm.ErrDuplicatedKey) {
 			return fmt.Errorf("workflow %q: %w", id, ErrConflict)
@@ -31,7 +36,7 @@ func (r *WorkflowRepository) Create(id, name string) error {
 
 func (r *WorkflowRepository) List() ([]database.Workflow, error) {
 	var records []database.Workflow
-	if err := r.db.Order("created_at").Find(&records).Error; err != nil {
+	if err := r.db.Where("user_id = ?", r.userID).Order("created_at").Find(&records).Error; err != nil {
 		return nil, err
 	}
 	return records, nil
@@ -39,7 +44,7 @@ func (r *WorkflowRepository) List() ([]database.Workflow, error) {
 
 func (r *WorkflowRepository) Load(id string) (*wf.Workflow, error) {
 	var record database.Workflow
-	err := r.db.Preload("Nodes").Preload("Edges").First(&record, "id = ?", id).Error
+	err := r.db.Preload("Nodes").Preload("Edges").First(&record, "id = ? AND user_id = ?", id, r.userID).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, fmt.Errorf("workflow %q: %w", id, ErrNotFound)
 	}
@@ -71,17 +76,18 @@ func (r *WorkflowRepository) Load(id string) (*wf.Workflow, error) {
 }
 
 func (r *WorkflowRepository) Delete(id string) error {
-	r.db.Where("workflow_id = ?", id).Delete(&database.Node{})
-	r.db.Where("workflow_id = ?", id).Delete(&database.Edge{})
-
-	tx := r.db.Delete(&database.Workflow{}, "id = ?", id)
-	if tx.Error != nil {
-		return tx.Error
+	if _, err := r.Load(id); err != nil {
+		return err
 	}
-	if tx.RowsAffected == 0 {
-		return fmt.Errorf("workflow %q: %w", id, ErrNotFound)
-	}
-	return nil
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("workflow_id = ?", id).Delete(&database.Node{}).Error; err != nil {
+			return err
+		}
+		if err := tx.Where("workflow_id = ?", id).Delete(&database.Edge{}).Error; err != nil {
+			return err
+		}
+		return tx.Delete(&database.Workflow{}, "id = ? AND user_id = ?", id, r.userID).Error
+	})
 }
 
 func (r *WorkflowRepository) AddNode(workflowID, id, nodeType, config string) error {

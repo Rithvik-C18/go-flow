@@ -19,8 +19,36 @@ func Auth(authService *service.AuthService) gin.HandlerFunc {
 
 		claims, err := authService.VerifyToken(token)
 		if err != nil {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
-			return
+			refreshToken, err := c.Cookie("refresh_token")
+			if err != nil || refreshToken == "" {
+				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid or expired token"})
+				return
+			}
+
+			newAccessToken, newRefreshToken, err := authService.RefreshAccessToken(refreshToken)
+			if err != nil {
+				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid or expired refresh token"})
+				return
+			}
+
+			c.SetSameSite(http.SameSiteStrictMode)
+			c.SetCookie(
+				"refresh_token",
+				newRefreshToken,
+				int(7*24*60*60),
+				"/",
+				"",
+				true,
+				true,
+			)
+
+			c.Header("New-Access-Token", newAccessToken)
+
+			claims, err = authService.VerifyToken(newAccessToken)
+			if err != nil {
+				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "failed to verify new token"})
+				return
+			}
 		}
 
 		c.Set("userId", claims.UserID)

@@ -5,7 +5,9 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func registerProtectedRoutes(r *gin.Engine, workflowHandler *handler.WorkflowHandler, authMiddleware gin.HandlerFunc) {
+func registerProtectedRoutes(r gin.IRouter, workflowHandler *handler.WorkflowHandler, authHandler *handler.AuthHandler, authMiddleware gin.HandlerFunc) {
+	r.POST("/logout", authMiddleware, authHandler.Logout)
+
 	workflows := r.Group("/workflows", authMiddleware)
 	{
 		workflows.GET("", workflowHandler.ListWorkflows)

@@ -1,16 +1,56 @@
-workflow      →  nothing internal
-executor      →  workflow
-nodes         →  executor (for ExecutionContext)
-factory       →  workflow + nodes
-main          →  workflow + executor
+# Fluxion
 
+A React workflow editor with a Go API and PostgreSQL storage.
 
-create workflow
-run workflow
-delete workflow
+## Deploy the free Render demo
 
-list nodes
-add node
-add edge
-delete node
-delete edge
+The root `render.yaml` provisions a Docker web service and PostgreSQL database in
+Singapore. In Render, create a **Blueprint**, connect this GitHub repository,
+select the deployment branch, and apply it. Render generates a JWT secret and
+connects the service to its database. No local `.env` files are uploaded.
+
+The service serves the frontend and `/api` on the same HTTPS origin. `/healthz`
+checks database availability. The free database expires after 30 days; export
+anything you want to keep or upgrade before expiration. Free web services can
+sleep when idle.
+
+Optional integrations require `GEMINI_API_KEY` and/or `GOOGLE_CREDENTIALS`
+(service-account JSON) in the Render service environment. Core authentication,
+workflow editing, HTTP nodes and conditions do not require these keys. Do not
+expose shared integration credentials in a public demo without controlling who
+can register and use them.
+
+## Local development
+
+Requirements: Go 1.26.5, Node 22.12+ and PostgreSQL.
+
+1. Copy `.env.example` to `.env` and set `DATABASE_URL` and `JWT_SECRET`.
+2. Run `go run ./cmd/go-flow`.
+3. Run `npm ci` then `npm run dev` in `web/`.
+
+Vite proxies `/api` to port 8080. Production cookies are Secure and HttpOnly;
+use HTTPS when testing session refresh outside localhost. Set `ALLOWED_ORIGINS`
+only if you intentionally host the frontend separately.
+
+## Container
+
+```sh
+docker build -t go-flow .
+docker run --rm -p 8080:8080 --env-file .env go-flow
+```
+
+The database URL must be reachable from inside the container. Database tables
+are migrated on startup. Workflows belong to their creator. Existing workflows
+without an owner are preserved but hidden; assign their `user_id` explicitly to
+the correct account before using them. The deployment uses a fresh database and
+does not copy local data or secrets.
+
+## Checks
+
+```sh
+go test ./...
+go vet ./...
+cd web
+npm run build
+npm run lint
+```

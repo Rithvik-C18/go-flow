@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	ex "github.com/Rithvik-C18/go-flow/internal/execution"
+	"github.com/Rithvik-C18/go-flow/internal/execution"
 	"github.com/Rithvik-C18/go-flow/internal/repository"
 	wf "github.com/Rithvik-C18/go-flow/internal/workflow"
 )
@@ -34,14 +34,22 @@ type WorkflowDetail struct {
 
 type WorkflowService struct {
 	repo     *repository.WorkflowRepository
-	executor *ex.Executor
+	executor *execution.Executor
 }
 
-func NewWorkflowService(repo *repository.WorkflowRepository, executor *ex.Executor) *WorkflowService {
+func NewWorkflowService(repo *repository.WorkflowRepository, executor *execution.Executor) *WorkflowService {
 	return &WorkflowService{
 		repo:     repo,
 		executor: executor,
 	}
+}
+
+func (s *WorkflowService) ForUser(userID uint) *WorkflowService {
+	return &WorkflowService{repo: s.repo.ForUser(userID), executor: s.executor}
+}
+
+func (s *WorkflowService) SetExecutor(executor *execution.Executor) {
+	s.executor = executor
 }
 
 func (s *WorkflowService) List() ([]WorkflowSummary, error) {
@@ -75,7 +83,7 @@ func (s *WorkflowService) Delete(id string) error {
 }
 
 func (s *WorkflowService) AddNode(workflowID, id, nodeType string, config map[string]any) error {
-	if !ex.IsValidNodeType(nodeType) {
+	if !execution.IsValidNodeType(nodeType) {
 		return fmt.Errorf("unknown node type %q: %w", nodeType, ErrValidation)
 	}
 

@@ -1,6 +1,8 @@
 package auth
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"strconv"
 	"time"
@@ -15,7 +17,29 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
-func GenerateToken(user *database.User, secret string, ttl time.Duration) (string, error) {
+func GenerateRefreshTokenSecret(secret string) string {
+	hash := sha256.Sum256([]byte(secret + "_refresh"))
+	return hex.EncodeToString(hash[:])
+}
+
+func GenerateRefreshToken(user *database.User, secret string, ttl time.Duration) (string, error) {
+	refreshSecret := GenerateRefreshTokenSecret(secret)
+	claims := Claims{
+		UserID:   user.ID,
+		Username: user.Username,
+		RegisteredClaims: jwt.RegisteredClaims{
+			Subject:   strconv.FormatUint(uint64(user.ID), 10),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(ttl)),
+		},
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return token.SignedString([]byte(refreshSecret))
+}
+
+
+func GenerateAccessToken(user *database.User, secret string, ttl time.Duration) (string, error) {
 	claims := Claims{
 		UserID:   user.ID,
 		Username: user.Username,
@@ -42,4 +66,14 @@ func ValidateToken(tokenString, secret string) (*Claims, error) {
 		return nil, errors.New("invalid or expired token")
 	}
 	return claims, nil
+}
+
+func ValidateRefreshToken(tokenString, secret string) (*Claims, error) {
+	refreshSecret := GenerateRefreshTokenSecret(secret)
+	return ValidateToken(tokenString, refreshSecret)
+}
+
+func HashRefreshToken(token string) string {
+	hash := sha256.Sum256([]byte(token))
+	return hex.EncodeToString(hash[:])
 }

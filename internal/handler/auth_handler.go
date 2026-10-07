@@ -35,15 +35,17 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		return
 	}
 
-	user, token, err := h.service.Register(req.Username, req.Email, req.Password)
+	user, accessToken, refreshToken, err := h.service.Register(req.Username, req.Email, req.Password)
 	if err != nil {
 		respondError(c, err)
 		return
 	}
 
+	h.setRefreshTokenCookie(c, refreshToken)
+
 	respondJSON(c, http.StatusCreated, gin.H{
-		"token": token,
-		"user":  userResponse(user),
+		"access_token": accessToken,
+		"user":         userResponse(user),
 	})
 }
 
@@ -54,7 +56,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	user, token, err := h.service.Login(req.Username, req.Password)
+	user, accessToken, refreshToken, err := h.service.Login(req.Username, req.Password)
 	if err != nil {
 		if errors.Is(err, service.ErrInvalidCredential) {
 			respondJSON(c, http.StatusUnauthorized, gin.H{"error": err.Error()})
@@ -64,9 +66,11 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
+	h.setRefreshTokenCookie(c, refreshToken)
+
 	respondJSON(c, http.StatusOK, gin.H{
-		"token": token,
-		"user":  userResponse(user),
+		"access_token": accessToken,
+		"user":         userResponse(user),
 	})
 }
 
@@ -76,4 +80,73 @@ func userResponse(user *database.User) gin.H {
 		"username": user.Username,
 		"email":    user.Email,
 	}
+}
+
+func (h *AuthHandler) RefreshToken(c *gin.Context) {
+	refreshToken, err := c.Cookie("refresh_token")
+	if err != nil || refreshToken == "" {
+		respondJSON(c, http.StatusUnauthorized, gin.H{"error": "refresh token required"})
+		return
+	}
+
+	accessToken, newRefreshToken, err := h.service.RefreshAccessToken(refreshToken)
+	if err != nil {
+		respondJSON(c, http.StatusUnauthorized, gin.H{"error": "invalid refresh token"})
+		return
+	}
+
+	h.setRefreshTokenCookie(c, newRefreshToken)
+
+	respondJSON(c, http.StatusOK, gin.H{
+		"access_token": accessToken,
+	})
+}
+
+func (h *AuthHandler) Logout(c *gin.Context) {
+	userID, exists := c.Get("userId")
+	if !exists {
+		respondJSON(c, http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	userIDUint, ok := userID.(uint)
+	if !ok {
+		respondJSON(c, http.StatusUnauthorized, gin.H{"error": "invalid user id"})
+		return
+	}
+
+	if err := h.service.Logout(userIDUint); err != nil {
+		respondError(c, err)
+		return
+	}
+
+	h.clearRefreshTokenCookie(c)
+
+	respondJSON(c, http.StatusOK, gin.H{"message": "logged out successfully"})
+}
+
+func (h *AuthHandler) setRefreshTokenCookie(c *gin.Context, token string) {
+	c.SetSameSite(http.SameSiteStrictMode)
+	c.SetCookie(
+		"refresh_token",
+		token,
+		int(7*24*60*60), // 7 days
+		"/",
+		"",
+		true,  // secure
+		true,  // httpOnly
+	)
+}
+
+func (h *AuthHandler) clearRefreshTokenCookie(c *gin.Context) {
+	c.SetSameSite(http.SameSiteStrictMode)
+	c.SetCookie(
+		"refresh_token",
+		"",
+		-1,
+		"/",
+		"",
+		true,
+		true,
+	)
 }

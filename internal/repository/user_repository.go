@@ -49,3 +49,22 @@ func (r *UserRepository) FindByEmail(email string) (*database.User, error) {
 	}
 	return &user, nil
 }
+
+func (r *UserRepository) FindByID(id uint) (*database.User, error) {
+	var user database.User
+	err := r.db.First(&user, id).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, fmt.Errorf("user with id %d: %w", id, ErrNotFound)
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
+
+func (r *UserRepository) Update(user *database.User) error {
+	if err := r.db.Save(user).Error; err != nil {
+		return err
+	}
+	return nil
+}

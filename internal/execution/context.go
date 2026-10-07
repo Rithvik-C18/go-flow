@@ -23,3 +23,26 @@ func NewExecutionContext(workflowID, nodeID string, params map[string]any) *Exec
 		Logs:       make([]string, 0),
 	}
 }
+
+func CloneExecutionContext(ctx *ExecutionContext) *ExecutionContext {
+	// Deep copy params
+	paramsCopy := make(map[string]any)
+	for k, v := range ctx.Params {
+		paramsCopy[k] = v
+	}
+
+	// Deep copy input
+	inputCopy := make(map[string]any)
+	for k, v := range ctx.Input {
+		inputCopy[k] = v
+	}
+
+	return &ExecutionContext{
+		WorkflowID: ctx.WorkflowID,
+		NodeID:     ctx.NodeID,
+		Params:     paramsCopy,
+		Input:      inputCopy,
+		Output:     make(map[string]any),
+		Logs:       make([]string, 0),
+	}
+}

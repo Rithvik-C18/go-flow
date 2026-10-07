@@ -1,0 +1,11 @@
+.git
+.env
+.env.*
+!.env.example
+.codex
+.agents
+.devin
+web/node_modules
+web/dist
+go-flow
+*.log
