@@ -42,7 +42,8 @@ node and its upstream nodes, then shows the response. A successful HTTP node
 exposes `statusCode` and the fields returned by the API.
 
 Connect an HTTP node to **Condition (If)** and compare `{{ statusCode }}` with
-`200`. Use `{{ params.name }}` for JSON values passed through Test input or the
+`200`. The Condition node returns a `result` boolean; it does not route or skip
+later nodes based on that value. Use `{{ params.name }}` for JSON values passed through Test input or the
 workflow run dialog. In HTTP headers, query parameters, and JSON body fields,
 `{{ input.field }}` refers to the previous node's output. The expression must
 occupy the entire field value. Each node also has **Advanced JSON** for options

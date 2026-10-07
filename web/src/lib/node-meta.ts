@@ -28,7 +28,7 @@ export const nodeTypesMeta: NodeTypeMeta[] = [
   {
     type: 'if',
     label: 'Condition (If)',
-    description: 'Branch on a comparison',
+    description: 'Compare values and output true or false',
     icon: GitBranch,
     chip: 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400',
   },
