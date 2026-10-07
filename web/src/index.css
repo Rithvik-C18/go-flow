@@ -200,5 +200,13 @@
   .react-flow__minimap {
     @apply rounded-lg border;
     background: var(--card);
+    width: min(180px, calc(100% - 20px));
+    overflow: hidden;
+    cursor: crosshair;
+  }
+  .react-flow__minimap-svg {
+    display: block;
+    width: 100%;
+    height: auto;
   }
 }

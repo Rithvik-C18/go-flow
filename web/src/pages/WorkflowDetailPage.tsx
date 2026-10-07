@@ -560,8 +560,21 @@ function Editor({ workflowId }: { workflowId: string }) {
             <MiniMap
               pannable
               zoomable
+              ariaLabel="Workflow minimap: click to center the canvas, or drag to pan"
+              onClick={(_, position) => {
+                void reactFlow.setCenter(position.x, position.y, { zoom: reactFlow.getZoom(), duration: 250 })
+              }}
               maskColor="oklch(0 0 0 / 8%)"
-              nodeColor={() => 'oklch(0.55 0 0)'}
+              nodeColor={(node) => {
+                switch (node.data.type) {
+                  case 'http': return '#0284c7'
+                  case 'if': return '#d97706'
+                  case 'gemini': return '#7c3aed'
+                  case 'google_docs': return '#2563eb'
+                  case 'google_sheets': return '#059669'
+                  default: return '#71717a'
+                }
+              }}
             />
 
             {nodes.length === 0 && (
