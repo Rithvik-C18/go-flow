@@ -26,20 +26,28 @@ func (e *Executor) SetParallel(enabled bool) {
 }
 
 func (e *Executor) Run(w *wf.Workflow, params ...map[string]any) error {
+	_, err := e.RunDetailed(w, params...)
+	return err
+}
+
+func (e *Executor) RunDetailed(w *wf.Workflow, params ...map[string]any) (map[string]map[string]any, error) {
 	var runParams map[string]any
 	if len(params) > 0 {
 		runParams = params[0]
 	}
 
 	ctx := NewExecutionContext(w.Id, "", runParams)
+	outputs := make(map[string]map[string]any, len(w.Nodes))
 
 	if e.parallel {
-		return e.runParallel(w, ctx)
+		err := e.runParallel(w, ctx, outputs)
+		return outputs, err
 	}
-	return e.runSequential(w, ctx)
+	err := e.runSequential(w, ctx, outputs)
+	return outputs, err
 }
 
-func (e *Executor) runSequential(w *wf.Workflow, ctx *ExecutionContext) error {
+func (e *Executor) runSequential(w *wf.Workflow, ctx *ExecutionContext, outputs map[string]map[string]any) error {
 	order, err := topologicalSort(w)
 	if err != nil {
 		return fmt.Errorf("topological sort failed: %w", err)
@@ -49,12 +57,13 @@ func (e *Executor) runSequential(w *wf.Workflow, ctx *ExecutionContext) error {
 		if err := e.executeNode(w, ctx, nodeID); err != nil {
 			return err
 		}
+		outputs[nodeID] = ctx.Output
 	}
 
 	return nil
 }
 
-func (e *Executor) runParallel(w *wf.Workflow, ctx *ExecutionContext) error {
+func (e *Executor) runParallel(w *wf.Workflow, ctx *ExecutionContext, outputs map[string]map[string]any) error {
 	levels, err := getExecutionLevels(w)
 	if err != nil {
 		return fmt.Errorf("failed to get execution levels: %w", err)
@@ -62,10 +71,9 @@ func (e *Executor) runParallel(w *wf.Workflow, ctx *ExecutionContext) error {
 
 	// Shared state for parallel execution
 	var (
-		mu         sync.Mutex
-		outputs    = make(map[string]map[string]any)
-		errorOnce  sync.Once
-		execError  error
+		mu        sync.Mutex
+		errorOnce sync.Once
+		execError error
 	)
 
 	// Initialize outputs map for all nodes

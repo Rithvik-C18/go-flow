@@ -217,15 +217,27 @@ export const api = {
     request(`/workflows/${id}`, { method: 'DELETE' }),
 
   runWorkflow: (id: string, params: Record<string, unknown>) =>
-    request<{ status: string }>(`/workflows/${id}/run`, {
+    request<{ status: string; outputs: Record<string, Record<string, unknown>> }>(`/workflows/${id}/run`, {
       method: 'POST',
       body: JSON.stringify(params),
     }),
+
+  runNode: (workflowId: string, nodeId: string, params: Record<string, unknown> = {}) =>
+    request<{ status: string; output: Record<string, unknown>; outputs: Record<string, Record<string, unknown>> }>(
+      `/workflows/${workflowId}/nodes/${nodeId}/run`,
+      { method: 'POST', body: JSON.stringify(params) },
+    ),
 
   addNode: (workflowId: string, node: { id: string; type: string; config: Record<string, unknown> }) =>
     request(`/workflows/${workflowId}/nodes`, {
       method: 'POST',
       body: JSON.stringify(node),
+    }),
+
+  updateNode: (workflowId: string, nodeId: string, type: string, config: Record<string, unknown>) =>
+    request(`/workflows/${workflowId}/nodes/${nodeId}`, {
+      method: 'PUT',
+      body: JSON.stringify({ type, config }),
     }),
 
   deleteNode: (workflowId: string, nodeId: string) =>

@@ -106,6 +106,19 @@ func (r *WorkflowRepository) AddNode(workflowID, id, nodeType, config string) er
 	return nil
 }
 
+func (r *WorkflowRepository) UpdateNode(workflowID, id, nodeType, config string) error {
+	result := r.db.Model(&database.Node{}).
+		Where("workflow_id = ? AND id = ?", workflowID, id).
+		Updates(map[string]any{"type": nodeType, "config": config})
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return fmt.Errorf("node %q: %w", id, ErrNotFound)
+	}
+	return nil
+}
+
 func (r *WorkflowRepository) DeleteNode(workflowID, nodeID string) error {
 	tx := r.db.Where(&database.Node{WorkflowID: workflowID, ID: nodeID}).Delete(&database.Node{})
 	if tx.Error != nil {

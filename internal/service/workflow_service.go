@@ -104,6 +104,24 @@ func (s *WorkflowService) AddNode(workflowID, id, nodeType string, config map[st
 	return s.repo.AddNode(workflowID, id, nodeType, string(configJSON))
 }
 
+func (s *WorkflowService) UpdateNode(workflowID, id, nodeType string, config map[string]any) error {
+	if !execution.IsValidNodeType(nodeType) {
+		return fmt.Errorf("unknown node type %q: %w", nodeType, ErrValidation)
+	}
+	workflow, err := s.repo.Load(workflowID)
+	if err != nil {
+		return err
+	}
+	if _, ok := workflow.Nodes[id]; !ok {
+		return fmt.Errorf("node %q: %w", id, repository.ErrNotFound)
+	}
+	encoded, err := json.Marshal(config)
+	if err != nil {
+		return fmt.Errorf("failed to encode node config: %w", err)
+	}
+	return s.repo.UpdateNode(workflowID, id, nodeType, string(encoded))
+}
+
 func (s *WorkflowService) DeleteNode(workflowID, nodeID string) error {
 	workflow, err := s.repo.Load(workflowID)
 	if err != nil {
@@ -144,12 +162,55 @@ func (s *WorkflowService) DeleteEdge(workflowID, from, to string) error {
 }
 
 func (s *WorkflowService) Run(workflowID string, params map[string]any) error {
+	_, err := s.RunDetailed(workflowID, params)
+	return err
+}
+
+func (s *WorkflowService) RunDetailed(workflowID string, params map[string]any) (map[string]map[string]any, error) {
 	workflow, err := s.repo.Load(workflowID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return s.executor.Run(workflow, params)
+	return s.executor.RunDetailed(workflow, params)
+}
+
+func (s *WorkflowService) RunNode(workflowID, nodeID string, params map[string]any) (map[string]map[string]any, error) {
+	workflow, err := s.repo.Load(workflowID)
+	if err != nil {
+		return nil, err
+	}
+	if _, ok := workflow.Nodes[nodeID]; !ok {
+		return nil, fmt.Errorf("node %q: %w", nodeID, repository.ErrNotFound)
+	}
+	needed := map[string]bool{nodeID: true}
+	var visit func(string)
+	visit = func(target string) {
+		for from, destinations := range workflow.Edges {
+			for _, to := range destinations {
+				if to == target && !needed[from] {
+					needed[from] = true
+					visit(from)
+				}
+			}
+		}
+	}
+	visit(nodeID)
+	partial := wf.NewWorkflow(workflow.Id, workflow.Name)
+	for id := range needed {
+		partial.Nodes[id] = workflow.Nodes[id]
+	}
+	for from, destinations := range workflow.Edges {
+		if !needed[from] {
+			continue
+		}
+		for _, to := range destinations {
+			if needed[to] {
+				partial.Edges[from] = append(partial.Edges[from], to)
+			}
+		}
+	}
+	return s.executor.RunDetailed(partial, params)
 }
 
 func toDetail(workflow *wf.Workflow) *WorkflowDetail {

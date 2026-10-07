@@ -62,7 +62,10 @@ func NewHttpNode(config map[string]any) (*HttpNode, error) {
 }
 
 func (h *HttpNode) Execute(ctx *ExecutionContext) error {
-	client := resty.New().SetTimeout(30 * time.Second)
+	if err := validateHTTPURL(h.url); err != nil {
+		return err
+	}
+	client := resty.New().SetTransport(publicHTTPTransport()).SetTimeout(30 * time.Second)
 	req := client.R()
 
 	if len(h.queryParams) > 0 {
@@ -132,13 +135,22 @@ func (h *HttpNode) Execute(ctx *ExecutionContext) error {
 		return fmt.Errorf("http request returned status: %d", resp.StatusCode())
 	}
 
-	var result map[string]any
-
-	err = json.Unmarshal(resp.Body(), &result)
-	if err != nil {
-		return fmt.Errorf("failed to parse JSON response: %w", err)
+	result := map[string]any{}
+	if len(resp.Body()) > 0 {
+		var body any
+		if err := json.Unmarshal(resp.Body(), &body); err == nil {
+			if fields, ok := body.(map[string]any); ok {
+				for key, value := range fields {
+					result[key] = value
+				}
+			} else {
+				result["body"] = body
+			}
+		} else {
+			result["body"] = string(resp.Body())
+		}
 	}
-
+	result["statusCode"] = resp.StatusCode()
 	ctx.Output = result
 
 	return nil

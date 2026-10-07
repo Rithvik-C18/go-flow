@@ -93,7 +93,7 @@ function Editor({ workflowId }: { workflowId: string }) {
   const [deletingSelection, setDeletingSelection] = useState(false)
   const [runParams, setRunParams] = useState('{\n  \n}')
   const [running, setRunning] = useState(false)
-  const [runResult, setRunResult] = useState<{ ok: boolean; message: string } | null>(null)
+  const [runResult, setRunResult] = useState<{ ok: boolean; message: string; outputs?: Record<string, Record<string, unknown>> } | null>(null)
   const [dropActive, setDropActive] = useState(false)
 
   const canvasRef = useRef<HTMLDivElement>(null)
@@ -341,7 +341,7 @@ function Editor({ workflowId }: { workflowId: string }) {
     setRunResult(null)
     try {
       const res = await api.runWorkflow(workflowId, params)
-      setRunResult({ ok: true, message: res.status })
+      setRunResult({ ok: true, message: res.status, outputs: res.outputs })
       toast.success('Workflow completed successfully')
     } catch (err) {
       setRunResult({ ok: false, message: (err as Error).message })
@@ -469,6 +469,7 @@ function Editor({ workflowId }: { workflowId: string }) {
                   <span className="mt-1 block break-all font-mono text-xs text-muted-foreground">
                     {runResult.message}
                   </span>
+                  {runResult.outputs && <pre className="mt-2 max-h-48 overflow-auto rounded border bg-muted p-2 font-mono text-[11px]">{JSON.stringify(runResult.outputs, null, 2)}</pre>}
                 </div>
               )}
               <DialogFooter className="gap-2">
@@ -582,6 +583,7 @@ function Editor({ workflowId }: { workflowId: string }) {
         {selectedNode && (
           <NodeInspector
             key={selectedNode.id}
+            workflowId={workflowId}
             nodeId={selectedNode.data.nodeId}
             type={selectedNode.data.type}
             config={selectedNode.data.config}
@@ -590,13 +592,13 @@ function Editor({ workflowId }: { workflowId: string }) {
               queueMutation(async () => {
                 setMutating(true)
                 try {
-                  await api.deleteNode(workflowId, selectedNode.id)
-                  await api.addNode(workflowId, { id: selectedNode.id, type: newType, config: newConfig })
+                  await api.updateNode(workflowId, selectedNode.id, newType, newConfig)
                   toast.success(`Saved "${selectedNode.id}"`)
                   await load()
                 } catch (err) {
                   toast.error((err as Error).message)
                   await load()
+                  throw err
                 } finally {
                   setMutating(false)
                 }

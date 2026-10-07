@@ -19,6 +19,8 @@ func registerProtectedRoutes(r gin.IRouter, workflowHandler *handler.WorkflowHan
 
 		workflows.GET("/:id/nodes", workflowHandler.ListNodes)
 		workflows.POST("/:id/nodes", workflowHandler.AddNode)
+		workflows.PUT("/:id/nodes/:nodeId", workflowHandler.UpdateNode)
+		workflows.POST("/:id/nodes/:nodeId/run", workflowHandler.RunNode)
 		workflows.DELETE("/:id/nodes/:nodeId", workflowHandler.DeleteNode)
 
 		workflows.POST("/:id/edges", workflowHandler.AddEdge)

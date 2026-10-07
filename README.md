@@ -32,6 +32,26 @@ Vite proxies `/api` to port 8080. Production cookies are Secure and HttpOnly;
 use HTTPS when testing session refresh outside localhost. Set `ALLOWED_ORIGINS`
 only if you intentionally host the frontend separately.
 
+## Build a workflow
+
+Create a workflow, click a node in the left panel, and select it on the canvas
+to open its settings. In **HTTP Request**, paste a complete URL such as
+`https://jsonplaceholder.typicode.com/todos/1`, choose the method, and add
+optional query parameters, headers, and a JSON body. **Test step** runs that
+node and its upstream nodes, then shows the response. A successful HTTP node
+exposes `statusCode` and the fields returned by the API.
+
+Connect an HTTP node to **Condition (If)** and compare `{{ statusCode }}` with
+`200`. Use `{{ params.name }}` for JSON values passed through Test input or the
+workflow run dialog. In HTTP headers, query parameters, and JSON body fields,
+`{{ input.field }}` refers to the previous node's output. The expression must
+occupy the entire field value. Each node also has **Advanced JSON** for options
+outside its form. Saving an edited node preserves its connections.
+
+Google Docs and Sheets forms accept the document/spreadsheet ID from between
+`/d/` and `/edit` in a Google URL. Their Test step needs a Google service
+account configured on the server, and Gemini needs `GEMINI_API_KEY`.
+
 ## Container
 
 ```sh

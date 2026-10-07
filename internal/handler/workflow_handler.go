@@ -69,12 +69,29 @@ func (h *WorkflowHandler) RunWorkflow(c *gin.Context) {
 		}
 	}
 
-	if err := h.service.ForUser(c.GetUint("userId")).Run(c.Param("id"), params); err != nil {
+	outputs, err := h.service.ForUser(c.GetUint("userId")).RunDetailed(c.Param("id"), params)
+	if err != nil {
 		respondError(c, err)
 		return
 	}
 
-	respondJSON(c, http.StatusOK, gin.H{"status": "completed"})
+	respondJSON(c, http.StatusOK, gin.H{"status": "completed", "outputs": outputs})
+}
+
+func (h *WorkflowHandler) RunNode(c *gin.Context) {
+	var params map[string]any
+	if c.Request.ContentLength > 0 {
+		if err := c.ShouldBindJSON(&params); err != nil {
+			respondValidationError(c, "invalid params body")
+			return
+		}
+	}
+	outputs, err := h.service.ForUser(c.GetUint("userId")).RunNode(c.Param("id"), c.Param("nodeId"), params)
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+	respondJSON(c, http.StatusOK, gin.H{"status": "completed", "outputs": outputs, "output": outputs[c.Param("nodeId")]})
 }
 
 func (h *WorkflowHandler) ListNodes(c *gin.Context) {
@@ -104,6 +121,22 @@ func (h *WorkflowHandler) AddNode(c *gin.Context) {
 	}
 
 	respondJSON(c, http.StatusCreated, gin.H{"id": req.Id, "type": req.Type})
+}
+
+func (h *WorkflowHandler) UpdateNode(c *gin.Context) {
+	var req struct {
+		Type   string         `json:"type" binding:"required"`
+		Config map[string]any `json:"config"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		respondValidationError(c, "type is required")
+		return
+	}
+	if err := h.service.ForUser(c.GetUint("userId")).UpdateNode(c.Param("id"), c.Param("nodeId"), req.Type, req.Config); err != nil {
+		respondError(c, err)
+		return
+	}
+	respondJSON(c, http.StatusOK, gin.H{"id": c.Param("nodeId"), "type": req.Type})
 }
 
 func (h *WorkflowHandler) DeleteNode(c *gin.Context) {
